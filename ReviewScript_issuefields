@@ -1,0 +1,58 @@
+import com.atlassian.jira.component.ComponentAccessor;
+import java.util.ArrayList;
+   
+/* Get Insight Object Facade from plugin accessor */
+Class objectFacadeClass = ComponentAccessor.getPluginAccessor().getClassLoader().findClass("com.riadalabs.jira.plugins.insight.channel.external.api.facade.ObjectFacade"); 
+def objectFacade = ComponentAccessor.getOSGiComponentInstanceOfType(objectFacadeClass);
+  
+/* Get Insight Object Type Facade from plugin accessor */
+Class objectTypeFacadeClass = ComponentAccessor.getPluginAccessor().getClassLoader().findClass("com.riadalabs.jira.plugins.insight.channel.external.api.facade.ObjectTypeFacade"); 
+def objectTypeFacade = ComponentAccessor.getOSGiComponentInstanceOfType(objectTypeFacadeClass);
+  
+/* Get Insight Object Attribute Facade from plugin accessor */
+Class objectTypeAttributeFacadeClass = ComponentAccessor.getPluginAccessor().getClassLoader().findClass("com.riadalabs.jira.plugins.insight.channel.external.api.facade.ObjectTypeAttributeFacade"); 
+def objectTypeAttributeFacade = ComponentAccessor.getOSGiComponentInstanceOfType(objectTypeAttributeFacadeClass);
+  
+Class objectAttributeBeanFactoryClass = ComponentAccessor.getPluginAccessor().getClassLoader().findClass("com.riadalabs.jira.plugins.insight.services.model.factory.ObjectAttributeBeanFactory"); 
+def objectAttributeBeanFactory = ComponentAccessor.getOSGiComponentInstanceOfType(objectAttributeBeanFactoryClass);
+ 
+/* The ID of the object type "Customer" is 1 in this example. The easiest way of finding the ID of an object type is to click at the object type in the object type tree and open up the web browser console to get the id that Insight uses to fetch objects. This will be easier to do in upcoming releases. */
+def objectTypeCustomer = objectTypeFacade.loadObjectTypeBean(1);
+   
+/* Create a new unsaved object bean */
+def newObjectBean = objectTypeCustomer.createMutableObjectBean();
+   
+ 
+/* Set up the attribute list */
+def objectAttributeBeans = new ArrayList();
+   
+/* Set the name of the customer */
+def nameObjectTypeAttributeBean = objectTypeAttributeFacade.loadObjectTypeAttributeBean(1);   // 1 is the ID of the object type attribute "Name"
+objectAttributeBeans.add(objectAttributeBeanFactory.createObjectAttributeBeanForObject(newObjectBean, nameObjectTypeAttributeBean, issue.getSummary()));
+ 
+ 
+/* Set the priority of the customer */
+if (issue.getPriorityObject() != null) {
+    def priorityObjectTypeAttributeBean = objectTypeAttributeFacade.loadObjectTypeAttributeBean(2);   // 2 is the ID of the object type attribute "Priority"
+    objectAttributeBeans.add(objectAttributeBeanFactory.createObjectAttributeBeanForObject(newObjectBean, priorityObjectTypeAttributeBean, issue.getPriorityObject().getName()));
+}
+  
+ /* Set the description of the customer */
+if (issue.getDescription() != null && !issue.getDescription().equals("")) {
+    def descriptionObjectTypeAttributeBean = objectTypeAttributeFacade.loadObjectTypeAttributeBean(3);   // 3 is the ID of the object type attribute "Description"
+    objectAttributeBeans.add(objectAttributeBeanFactory.createObjectAttributeBeanForObject(newObjectBean, descriptionObjectTypeAttributeBean, issue.getDescription()));
+}
+  
+ /* Set all object attributes to the object */
+newObjectBean.setObjectAttributeBeans(objectAttributeBeans);
+   
+/* Store the object into Insight. The new ObjectBean will be updated with an unique ID */
+try {
+    newObjectBean = objectFacade.storeObjectBean(newObjectBean);
+    log.warn("newObjectBean: " + newObjectBean);
+} catch (Exception vie) {
+    log.warn("Could not create issue due to validation exception:" + vie.getMessage());
+}
+  
+/* Done! :) */
+return true;
